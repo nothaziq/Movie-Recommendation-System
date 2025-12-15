@@ -7,7 +7,30 @@ if 'recommender' not in st.session_state:
     st.session_state.recommender = None
     st.session_state.loaded = False
 
-                st.divider()
+# Load model function with full dataset support
+@st.cache_resource
+def load_recommender(use_full_dataset=True, max_users=50000, max_movies=10000):
+    """
+    Load and build the recommendation model.
+    
+    Parameters:
+    - use_full_dataset: If True, loads all ratings data
+    - max_users: Maximum number of users for collaborative filtering (None = all)
+    - max_movies: Maximum number of movies for collaborative filtering (None = all)
+    """
+    recommender = HybridRecommender(
+        memory_efficient=True,
+        use_full_dataset=use_full_dataset
+    )
+    recommender.load_data(data_path='Dataset')
+    recommender.build_content_based(max_features=5000)
+    recommender.build_collaborative_filtering(
+        min_user_ratings=20,
+        min_movie_ratings=50,
+        max_users=max_users,
+        max_movies=max_movies
+    )
+    return recommender
 
 st.markdown(
     """
