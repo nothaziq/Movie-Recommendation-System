@@ -121,5 +121,20 @@ class HybridRecommender:
         
         return self
 
+    def build_content_based(self, max_features=2000):
 
+        # TF-IDF vectorization with reduced features for 32M dataset
+          tfidf = TfidfVectorizer(
+            max_features=max_features,
+            stop_words='english',
+            ngram_range=(1, 1),  # Unigrams only to save memory
+            dtype=np.float32,
+            min_df=2  # Ignore rare terms
+        )
+
+        self.tfidf_matrix = tfidf.fit_transform(self.movies_df['content'])
+
+        # Free memory
+        gc.collect()
         
+        return self
