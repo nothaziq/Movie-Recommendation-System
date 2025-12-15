@@ -32,6 +32,37 @@ def load_recommender(use_full_dataset=True, max_users=50000, max_movies=10000):
     )
     return recommender
 
+# Sidebar configuration
+with st.sidebar:
+    st.header("⚙️ Configuration")
+    
+    dataset_option = st.radio(
+        "Dataset Size:",
+        ["Full Dataset (Recommended)", "Medium (Faster)", "Light (Very Fast)"],
+        help="Choose based on your system memory"
+    )
+    
+    # Map options to parameters
+    config_map = {
+        "Full Dataset (Recommended)": {
+            "use_full": True,
+            "users": 50000,
+            "movies": 10000
+        },
+        "Medium (Faster)": {
+            "use_full": True,
+            "users": 30000,
+            "movies": 5000
+        },
+        "Light (Very Fast)": {
+            "use_full": True,
+            "users": 15000,
+            "movies": 3000
+        }
+    }
+    
+    config = config_map[dataset_option]
+    
 st.markdown(
     """
     <style>
