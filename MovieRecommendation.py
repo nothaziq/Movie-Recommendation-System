@@ -39,12 +39,12 @@ class HybridRecommender:
             
             ratings = pd.concat(chunks, ignore_index=True).head(sample_ratings)
             del chunks
-        else:
-            ratings = pd.read_csv(Dataset/ratings.csv, dtype={
-                'userId': 'int32',
-                'movieId': 'int32',
-                'rating': 'float32'
-            })
+                else:
+                    ratings = pd.read_csv(Dataset/ratings.csv, dtype={
+                        'userId': 'int32',
+                        'movieId': 'int32',
+                        'rating': 'float32'
+                    })
         
         if 'timestamp' in ratings.columns:
             ratings = ratings.drop('timestamp', axis=1)
@@ -238,4 +238,82 @@ class HybridRecommender:
         
         return recommendations[['movieId', 'title', 'genres', 'avg_rating', 'similarity_score']]
 
+    def get_hybrid_recommendations(self, movie_id, n=10, content_weight=0.5, collab_weight=0.5):
+
+        # Get recommendations from both methods
+        content_recs = self.get_content_recommendations(movie_id, n=20)
+        collab_recs = self.get_collaborative_recommendations(movie_id, n=20)
         
+        if content_recs.empty and collab_recs.empty:
+            return pd.DataFrame()
+        
+        # Normalize weights
+        total_weight = content_weight + collab_weight
+        content_weight /= total_weight
+        collab_weight /= total_weight
+        
+        # Combine recommendations
+        all_movies = pd.concat([
+            content_recs[['movieId', 'title', 'genres', 'avg_rating']],
+            collab_recs[['movieId', 'title', 'genres', 'avg_rating']]
+        ]).drop_duplicates(subset='movieId')
+        
+        # Calculate hybrid scores
+        hybrid_scores = []
+        for _, movie in all_movies.iterrows():
+            mid = movie['movieId']
+            
+            # Get scores from both methods
+            content_score = 0
+            if not content_recs.empty:
+                content_match = content_recs[content_recs['movieId'] == mid]
+                if not content_match.empty:
+                    content_score = content_match['similarity_score'].values[0]
+            
+            collab_score = 0
+            if not collab_recs.empty:
+                collab_match = collab_recs[collab_recs['movieId'] == mid]
+                if not collab_match.empty:
+                    collab_score = collab_match['similarity_score'].values[0]
+            
+            # Calculate weighted hybrid score
+            hybrid_score = (content_weight * content_score) + (collab_weight * collab_score)
+            hybrid_scores.append(hybrid_score)
+        
+        all_movies['hybrid_score'] = hybrid_scores
+        
+        # Sort and return top N
+        recommendations = all_movies.sort_values('hybrid_score', ascending=False).head(n)
+        
+        return recommendations[['movieId', 'title', 'genres', 'avg_rating', 'hybrid_score']]
+    
+    def get_recommendations_by_title(self, title, n=10, method='hybrid', 
+                                    content_weight=0.5, collab_weight=0.5):
+        # Find movie by title (case-insensitive partial match)
+        matches = self.movies_df[
+            self.movies_df['title'].str.contains(title, case=False, na=False)
+        ]
+        
+        if matches.empty:
+            print(f"No movies found matching: {title}")
+            return pd.DataFrame()
+        
+        if len(matches) > 1:
+            print(f"\nMultiple matches found for '{title}':")
+            for idx, row in matches.head(5).iterrows():
+                print(f"  - {row['title']} (ID: {row['movieId']})")
+            print("\nUsing the first match. Please be more specific if needed.")
+        
+        movie_id = matches.iloc[0]['movieId']
+        movie_title = matches.iloc[0]['title']
+        
+        print(f"\nGetting recommendations for: {movie_title}")
+        print("-" * 60)
+        
+        if method == 'content':
+            return self.get_content_recommendations(movie_id, n)
+        elif method == 'collaborative':
+            return self.get_collaborative_recommendations(movie_id, n)
+        else:  # hybrid
+            return self.get_hybrid_recommendations(movie_id, n, content_weight, collab_weight)
+ 
