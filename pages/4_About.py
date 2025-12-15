@@ -416,14 +416,14 @@ col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("""
-    ### MovieLens 20M Dataset
+    ### MovieLens 32M Dataset
     
-    Our system uses the MovieLens 20M dataset, a widely-used benchmark for recommendation systems.
+    Our system uses the MovieLens 32M dataset, a widely-used benchmark for recommendation systems.
     
     **Contents:**
-    - 📽️ **Movies**: ~62,000 movies with titles and genres
-    - ⭐ **Ratings**: ~20 million ratings from users
-    - 👥 **Users**: ~138,000 unique users
+    - 📽️ **Movies**: ~87,500 movies with titles and genres
+    - ⭐ **Ratings**: ~32 million ratings from users
+    - 👥 **Users**: ~200,000 unique users
     - 🏷️ **Tags**: User-generated keywords and themes
     - 🔗 **Links**: IMDb and TMDb identifiers
     
