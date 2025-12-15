@@ -1,5 +1,3 @@
-# Importing the libraries
-
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -7,11 +5,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from scipy.sparse import csr_matrix
 import warnings
-import os 
+import gc
+import os
 
 warnings.filterwarnings('ignore')
+
 class HybridRecommender:
-    def __init__(self):
+    def __init__(self, memory_efficient=True, sample_ratings=5000000):
+
         self.movies_df = None
         self.ratings_df = None
         self.tfidf_matrix = None
@@ -20,59 +21,60 @@ class HybridRecommender:
         self.idx_to_movie_id = {}
         self.knn_model = None
         self.memory_efficient = memory_efficient
+        self.sample_ratings = sample_ratings
 
-    def load_data(self):
-         movies = pd.read_csv(Dataset/movies.csv, dtype={'movieId': 'int32'})
+    def load_data(self, data_path='Dataset'):
+        movies = pd.read_csv(f'{data_path}/movies.csv', dtype={'movieId': 'int32'})
 
-         if sample_ratings:
-            print(f"Sampling {sample_ratings:,} ratings from dataset...")
+        # Sample ratings for memory efficiency
+        if self.sample_ratings:
             chunk_size = 1000000
             chunks = []
             total_rows = 0
             
-            for chunk in pd.read_csv(Dataset/ratings.csv, chunksize=chunk_size, 
+            for chunk in pd.read_csv(f'{data_path}/ratings.csv', chunksize=chunk_size, 
                                      dtype={'userId': 'int32', 'movieId': 'int32', 'rating': 'float32'}):
-                if total_rows >= sample_ratings:
+                if total_rows >= self.sample_ratings:
                     break
                 chunks.append(chunk)
                 total_rows += len(chunk)
             
-            ratings = pd.concat(chunks, ignore_index=True).head(sample_ratings)
+            ratings = pd.concat(chunks, ignore_index=True).head(self.sample_ratings)
             del chunks
-                else:
-                    ratings = pd.read_csv(Dataset/ratings.csv, dtype={
-                        'userId': 'int32',
-                        'movieId': 'int32',
-                        'rating': 'float32'
-                    })
+        else:
+            ratings = pd.read_csv(f'{data_path}/ratings.csv', dtype={
+                'userId': 'int32',
+                'movieId': 'int32',
+                'rating': 'float32'
+            })
         
         if 'timestamp' in ratings.columns:
             ratings = ratings.drop('timestamp', axis=1)
 
         gc.collect()
+        
         # Load tags (sample if too large)
         try:
-            tags = pd.read_csv(Dataset/tags.csv, dtype={'movieId': 'int32', 'userId': 'int32'})
+            tags = pd.read_csv(f'{data_path}/tags.csv', dtype={'movieId': 'int32', 'userId': 'int32'})
             if 'timestamp' in tags.columns:
                 tags = tags.drop('timestamp', axis=1)
 
             # Sample tags if too many
             if len(tags) > 500000:
                 tags = tags.sample(n=500000, random_state=42)
-                print(f"Sampled 500,000 tags from dataset")
         except:
-            print("Error loading tags, creating empty dataframe")
             tags = pd.DataFrame(columns=['movieId', 'tag'])
         
         # Clean tags
         tags['tag'] = tags['tag'].fillna('').str.lower().str.strip()
         
         # Load links
-        print("Loading links...")
-        links = pd.read_csv(Dataset/links.csv, dtype={'movieId': 'int32'})
+        try:
+            links = pd.read_csv(f'{data_path}/links.csv', dtype={'movieId': 'int32'})
+        except:
+            links = pd.DataFrame(columns=['movieId', 'imdbId', 'tmdbId'])
         
         # Aggregate data efficiently
-        print("Aggregating ratings...")
         avg_ratings = ratings.groupby('movieId', as_index=False).agg({
             'rating': ['mean', 'count']
         })
@@ -81,7 +83,6 @@ class HybridRecommender:
         avg_ratings['rating_count'] = avg_ratings['rating_count'].astype('int32')
         
         # Aggregate tags efficiently
-        print("Aggregating tags...")
         movie_tags = tags.groupby('movieId')['tag'].apply(
             lambda x: ' '.join(list(set(list(x)[:20])))  # Limit to 20 tags per movie
         ).reset_index()
@@ -92,17 +93,22 @@ class HybridRecommender:
         gc.collect()
         
         # Merge everything
-        print("Merging datasets...")
-        self.movies_df = movies.merge(avg_ratings, on='movieId', how='left') \
-                               .merge(movie_tags, on='movieId', how='left') \
-                               .merge(links[['movieId', 'imdbId', 'tmdbId']], on='movieId', how='left')
+        self.movies_df = movies.merge(avg_ratings, on='movieId', how='left')
+        
+        if not movie_tags.empty:
+            self.movies_df = self.movies_df.merge(movie_tags, on='movieId', how='left')
+        else:
+            self.movies_df['tags_text'] = ''
+            
+        if not links.empty and 'imdbId' in links.columns:
+            self.movies_df = self.movies_df.merge(links[['movieId', 'imdbId', 'tmdbId']], on='movieId', how='left')
         
         # Handle missing values
         self.movies_df['avg_rating'] = self.movies_df['avg_rating'].fillna(0)
         self.movies_df['rating_count'] = self.movies_df['rating_count'].fillna(0)
         self.movies_df['tags_text'] = self.movies_df['tags_text'].fillna('')
 
-         # Create content field
+        # Create content field
         self.movies_df['genres_text'] = self.movies_df['genres'].str.replace('|', ' ')
         self.movies_df['content'] = (
             self.movies_df['genres_text'] + ' ' + 
@@ -110,8 +116,8 @@ class HybridRecommender:
         )
         
         # Keep only essential columns
-        self.movies_df = self.movies_df[['movieId', 'title', 'genres', 'content', 
-                                         'avg_rating', 'rating_count']]
+        essential_cols = ['movieId', 'title', 'genres', 'content', 'avg_rating', 'rating_count']
+        self.movies_df = self.movies_df[essential_cols]
         
         self.ratings_df = ratings
         
@@ -122,9 +128,9 @@ class HybridRecommender:
         return self
 
     def build_content_based(self, max_features=2000):
-
-        # TF-IDF vectorization with reduced features for 32M dataset
-          tfidf = TfidfVectorizer(
+        
+        # TF-IDF vectorization with reduced features
+        tfidf = TfidfVectorizer(
             max_features=max_features,
             stop_words='english',
             ngram_range=(1, 1),  # Unigrams only to save memory
@@ -133,13 +139,13 @@ class HybridRecommender:
         )
 
         self.tfidf_matrix = tfidf.fit_transform(self.movies_df['content'])
-
+        
         # Free memory
         gc.collect()
         
         return self
 
-    def build_collaborative_filtering(self, min_ratings=50, max_users=20000, max_movies=5000):
+    def build_collaborative_filtering(self, min_ratings=50, max_users=15000, max_movies=4000):
         
         # Get most popular movies
         popular_movies = self.movies_df.nlargest(max_movies, 'rating_count')['movieId'].values
@@ -149,14 +155,12 @@ class HybridRecommender:
             self.ratings_df['movieId'].isin(popular_movies)
         ]
 
-        #Get the most Active users
+        # Get the most active users
         user_counts = filtered_ratings['userId'].value_counts()
         top_users = user_counts.head(max_users).index
         
         filtered_ratings = filtered_ratings[filtered_ratings['userId'].isin(top_users)]
-
         # Create user-item matrix with sparse format
-        print("Creating sparse user-item matrix...")
         self.user_item_matrix = filtered_ratings.pivot_table(
             index='movieId',
             columns='userId',
@@ -176,7 +180,6 @@ class HybridRecommender:
         sparse_matrix = csr_matrix(self.user_item_matrix.values)
         
         sparsity = 100 * (1 - sparse_matrix.nnz / (sparse_matrix.shape[0] * sparse_matrix.shape[1]))
-
         # Train KNN model
         self.knn_model = NearestNeighbors(
             metric='cosine',
@@ -193,7 +196,7 @@ class HybridRecommender:
         return self
 
     def get_content_recommendations(self, movie_id, n=10):
-       try:
+        try:
             idx = self.movies_df[self.movies_df['movieId'] == movie_id].index[0]
 
             # Compute similarity only for this movie (memory efficient)
@@ -208,7 +211,7 @@ class HybridRecommender:
             
             return recommendations[['movieId', 'title', 'genres', 'avg_rating', 'similarity_score']]
 
-       except IndexError:
+        except IndexError:
             return pd.DataFrame()
 
     def get_collaborative_recommendations(self, movie_id, n=10):
@@ -239,7 +242,7 @@ class HybridRecommender:
         return recommendations[['movieId', 'title', 'genres', 'avg_rating', 'similarity_score']]
 
     def get_hybrid_recommendations(self, movie_id, n=10, content_weight=0.5, collab_weight=0.5):
-
+        
         # Get recommendations from both methods
         content_recs = self.get_content_recommendations(movie_id, n=20)
         collab_recs = self.get_collaborative_recommendations(movie_id, n=20)
@@ -295,20 +298,10 @@ class HybridRecommender:
         ]
         
         if matches.empty:
-            print(f"No movies found matching: {title}")
             return pd.DataFrame()
-        
-        if len(matches) > 1:
-            print(f"\nMultiple matches found for '{title}':")
-            for idx, row in matches.head(5).iterrows():
-                print(f"  - {row['title']} (ID: {row['movieId']})")
-            print("\nUsing the first match. Please be more specific if needed.")
         
         movie_id = matches.iloc[0]['movieId']
         movie_title = matches.iloc[0]['title']
-        
-        print(f"\nGetting recommendations for: {movie_title}")
-        print("-" * 60)
         
         if method == 'content':
             return self.get_content_recommendations(movie_id, n)
@@ -316,4 +309,3 @@ class HybridRecommender:
             return self.get_collaborative_recommendations(movie_id, n)
         else:  # hybrid
             return self.get_hybrid_recommendations(movie_id, n, content_weight, collab_weight)
- 
