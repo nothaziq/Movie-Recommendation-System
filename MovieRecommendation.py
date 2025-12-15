@@ -211,4 +211,31 @@ class HybridRecommender:
        except IndexError:
             return pd.DataFrame()
 
+    def get_collaborative_recommendations(self, movie_id, n=10):
+        if movie_id not in self.movie_id_to_idx:
+            return pd.DataFrame()
+
+        idx = self.movie_id_to_idx[movie_id]
+        distances, indices = self.knn_model.kneighbors(
+            self.user_item_matrix.iloc[idx].values.reshape(1, -1),
+            n_neighbors=n+1
+        )
+
+        # Skip first result (the movie itself)
+        similar_indices = indices.flatten()[1:]
+        similar_distances = distances.flatten()[1:]
+        
+        similar_movie_ids = [self.idx_to_movie_id[i] for i in similar_indices]
+        
+        recommendations = self.movies_df[
+            self.movies_df['movieId'].isin(similar_movie_ids)
+        ].copy()
+
+        # Add similarity scores
+        score_dict = dict(zip(similar_movie_ids, 1 - similar_distances))
+        recommendations['similarity_score'] = recommendations['movieId'].map(score_dict)
+        recommendations = recommendations.sort_values('similarity_score', ascending=False)
+        
+        return recommendations[['movieId', 'title', 'genres', 'avg_rating', 'similarity_score']]
+
         
