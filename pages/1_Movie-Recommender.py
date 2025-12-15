@@ -1,18 +1,14 @@
 import streamlit as st
+import pandas as pd
+from MovieRecommendation import HybridRecommender
 
-st.title("Movie Recommender")
-st.write("Enter a movie title:")
-movie_title = st.text_input("Movie Title")
+# Initialize session state for the recommender
+if 'recommender' not in st.session_state:
+    st.session_state.recommender = None
+    st.session_state.loaded = False
 
-st.write("Enter a number of recommendations:")
-num_recommendations = st.number_input("Number of Recommendations", min_value=1, max_value=10, value=5)
+                st.divider()
 
-if st.button("Recommend"):
-    if movie_title.strip() == "":
-        st.warning("Please enter a movie title.")
-    else:
-        st.subheader("Recommended Movies:")
-        
 st.markdown(
     """
     <style>
@@ -20,13 +16,13 @@ st.markdown(
         position: fixed;
         bottom: 0;
         left: 0;
-        width: 100%;                 /* full page width */
+        width: 100%;
         background-color: #0e1117;
-        text-align: center;          /* center the text inside */
+        text-align: center;
         padding: 10px 20px;
         font-size: 14px;
         color: #fff;
-        border-top: 1px solid #444;  /* divider line across the whole page */
+        border-top: 1px solid #444;
     }
     .footer a {
         color: #fff;
