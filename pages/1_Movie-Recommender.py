@@ -63,6 +63,30 @@ with st.sidebar:
     
     config = config_map[dataset_option]
     
+    st.divider()
+    
+    # Advanced settings
+    with st.expander("🔧 Advanced Settings"):
+        content_weight = st.slider(
+            "Content Weight",
+            min_value=0.0,
+            max_value=1.0,
+            value=0.5,
+            step=0.1,
+            help="Weight for content-based recommendations"
+        )
+        collab_weight = 1.0 - content_weight
+        st.write(f"Collaborative Weight: {collab_weight:.1f}")
+    
+    st.divider()
+    
+    # Dataset info
+    st.info(
+        f"**Current Config:**\n\n"
+        f"👥 Users: {config['users']:,}\n\n"
+        f"🎬 Movies: {config['movies']:,}\n\n"
+        f"📊 Full Dataset: {'Yes' if config['use_full'] else 'No'}"
+    )
 st.markdown(
     """
     <style>
