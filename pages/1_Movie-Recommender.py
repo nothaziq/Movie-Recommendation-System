@@ -105,6 +105,136 @@ if not st.session_state.loaded:
 
 recommender = st.session_state.recommender
 
+# Main content
+st.title("🎬 Movie Recommendation System")
+st.markdown("### Find movies similar to your favorites!")
+
+# Create two columns for input
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    movie_title = st.text_input(
+        "🔍 Enter a movie title:",
+        placeholder="e.g., Inception, The Matrix, Toy Story...",
+        help="Type part or full movie name"
+    )
+
+with col2:
+    recommendation_type = st.selectbox(
+        "📊 Recommendation Type:",
+        ["Hybrid", "Content-based", "Collaborative"],
+        help="Hybrid uses both content and user ratings"
+    )
+
+# Additional options
+col3, col4 = st.columns(2)
+
+with col3:
+    num_recommendations = st.slider(
+        "📝 Number of Recommendations:",
+        min_value=1,
+        max_value=20,
+        value=10,
+        help="How many movies to recommend"
+    )
+
+with col4:
+    show_scores = st.checkbox("Show Similarity Scores", value=True)
+
+# Recommend button
+if st.button("🎯 Get Recommendations", type="primary", use_container_width=True):
+    if movie_title.strip() == "":
+        st.warning("⚠️ Please enter a movie title.")
+    else:
+        # Map selection to method parameter
+        method_map = {
+            "Hybrid": "hybrid",
+            "Collaborative": "collaborative",
+            "Content-based": "content"
+        }
+        method = method_map[recommendation_type]
+        
+        # Get recommendations
+        with st.spinner(f"Finding movies similar to '{movie_title}'..."):
+            recommendations = recommender.get_recommendations_by_title(
+                title=movie_title,
+                n=num_recommendations,
+                method=method,
+                content_weight=content_weight if method == "hybrid" else 0.5,
+                collab_weight=collab_weight if method == "hybrid" else 0.5
+            )
+        
+        if recommendations.empty:
+            st.error(f"❌ No movies found matching: **{movie_title}**")
+            st.info("💡 Try searching with different keywords or check the spelling.")
+        else:
+            # Show the matched movie
+            st.success(f"✅ Showing recommendations based on: **{movie_title}**")
+            
+            st.divider()
+            st.subheader("🎯 Recommended Movies:")
+            
+            # Display recommendations in a nice format
+            for idx, (_, row) in enumerate(recommendations.iterrows(), 1):
+                with st.container():
+                    col_num, col_info, col_rating, col_score = st.columns([0.5, 3, 1, 1])
+                    
+                    with col_num:
+                        st.markdown(f"### {idx}")
+                    
+                    with col_info:
+                        st.markdown(f"### {row['title']}")
+                        st.markdown(f"*{row['genres']}*")
+                    
+                    with col_rating:
+                        rating = row['avg_rating']
+                        if rating > 0:
+                            st.metric("⭐ Rating", f"{rating:.2f}/5.0")
+                        else:
+                            st.metric("⭐ Rating", "N/A")
+                    
+                    with col_score:
+                        if show_scores:
+                            if 'hybrid_score' in row and pd.notna(row['hybrid_score']):
+                                st.metric("🎯 Score", f"{row['hybrid_score']:.3f}")
+                            elif 'similarity_score' in row and pd.notna(row['similarity_score']):
+                                st.metric("🎯 Score", f"{row['similarity_score']:.3f}")
+                    
+                    st.divider()
+            
+            # Download recommendations
+            csv = recommendations.to_csv(index=False)
+            st.download_button(
+                label="📥 Download Recommendations as CSV",
+                data=csv,
+                file_name=f"recommendations_{movie_title.replace(' ', '_')}.csv",
+                mime="text/csv"
+            )
+
+# Add some spacing before footer
+st.markdown("<br>" * 3, unsafe_allow_html=True)
+
+# Footer with statistics
+if st.session_state.loaded and recommender is not None:
+    st.markdown("---")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("📊 Total Movies", f"{len(recommender.movies_df):,}")
+    
+    with col2:
+        if recommender.ratings_df is not None:
+            st.metric("👥 Total Users", f"{recommender.ratings_df['userId'].nunique():,}")
+    
+    with col3:
+        if recommender.ratings_df is not None:
+            st.metric("⭐ Total Ratings", f"{len(recommender.ratings_df):,}")
+    
+    with col4:
+        if recommender.user_item_matrix is not None:
+            st.metric("🎬 CF Movies", f"{len(recommender.user_item_matrix):,}")
+
+
 st.markdown(
     """
     <style>
