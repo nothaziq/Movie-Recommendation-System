@@ -241,7 +241,7 @@ if st.session_state.loaded and recommender is not None:
         if recommender.user_item_matrix is not None:
             st.metric("🎬 CF Movies", f"{len(recommender.user_item_matrix):,}")
 
-
+# Fixed footer
 st.markdown(
     """
     <style>
@@ -254,23 +254,31 @@ st.markdown(
         text-align: center;
         padding: 10px 20px;
         font-size: 14px;
-        color: #fff;
+        color: #fafafa;
         border-top: 1px solid #444;
+        z-index: 999;
     }
     .footer a {
-        color: #fff;
+        color: #1f77b4;
         text-decoration: none;
         margin: 0 8px;
+        font-weight: 500;
     }
     .footer a:hover {
         text-decoration: underline;
+        color: #4a9eff;
+    }
+    /* Add padding to main content to prevent footer overlap */
+    .main .block-container {
+        padding-bottom: 100px;
     }
     </style>
     <div class="footer">
-        Movie Recommendation System <br>
-        Designed for <b>Introduction to Artificial Intelligence</b> course <br>
-        Built with <a href="https://streamlit.io" target="_blank">Streamlit</a> |
-        <a href="https://github.com/nothaziq/Movie-Recommendation-System" target="_blank">GitHub</a>
+        🎬 <b>Movie Recommendation System</b> | Full Dataset Edition<br>
+        Designed for <b>Introduction to Artificial Intelligence</b> course<br>
+        Built with <a href="https://streamlit.io" target="_blank">Streamlit</a> | 
+        <a href="https://scikit-learn.org" target="_blank">scikit-learn</a> | 
+        <a href="https://github.com/nothaziq/Movie-Recommendation-System" target="_blank">GitHub Repository</a>
     </div>
     """,
     unsafe_allow_html=True
