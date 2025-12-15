@@ -92,9 +92,9 @@ with col1:
     
     ### 🎓 Course Information
     - **Course**: Introduction to Artificial Intelligence
-    - **Institution**: Your University Name
+    - **Institution**: Air University
     - **Semester**: Fall 2024
-    - **Instructor**: Professor Name
+    - **Instructor**: Ma'am Aisha Sattar
     """)
 
 with col2:
@@ -555,9 +555,9 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown("""
     <div class="team-card">
-        <h3>🎓 Student Name</h3>
-        <p>Student ID: XXXXX</p>
-        <p>Email: student@university.edu</p>
+        <h3>🎓 Muhammad Haziq Shahid</h3>
+        <p>Student ID: 242242</p>
+        <p>Email: 242242@students.au.edu.pk</p>
         <p><strong>Role:</strong> Lead Developer</p>
     </div>
     """, unsafe_allow_html=True)
@@ -565,20 +565,20 @@ with col1:
 with col2:
     st.markdown("""
     <div class="team-card">
-        <h3>🎓 Team Member 2</h3>
-        <p>Student ID: XXXXX</p>
-        <p>Email: member2@university.edu</p>
-        <p><strong>Role:</strong> Algorithm Design</p>
+        <h3>🎓 Hareem Shakeel</h3>
+        <p>Student ID: 242204</p>
+        <p>Email: 242204@students.au.edu.pk</p>
+        <p><strong>Role:</strong> UI/UX Design</p>
     </div>
     """, unsafe_allow_html=True)
 
 with col3:
     st.markdown("""
     <div class="team-card">
-        <h3>🎓 Team Member 3</h3>
-        <p>Student ID: XXXXX</p>
-        <p>Email: member3@university.edu</p>
-        <p><strong>Role:</strong> UI/UX Design</p>
+        <h3>🎓 Malik Muhammad Uzaif</h3>
+        <p>Student ID: 242178</p>
+        <p>Email: 242178@students.au.edu.pk</p>
+        <p><strong>Role:</strong> Algorithm Design</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -627,12 +627,11 @@ st.markdown('<div class="section-header">🙏 Acknowledgments</div>', unsafe_all
 st.markdown("""
 We would like to thank:
 
-- **Professor [Name]** for guidance and support throughout this project
+- **Ma'am Aisha Sattar** for guidance and support throughout this project
 - **GroupLens Research** for providing the MovieLens dataset
-- **Our classmates** for testing and feedback
 - **The open-source community** for excellent tools and libraries
 
-This project was developed as part of the Introduction to Artificial Intelligence course at [University Name].
+This project was developed as part of the Introduction to Artificial Intelligence course at Air University Islamabad.
 """)
 
 # Footer
