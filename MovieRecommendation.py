@@ -102,4 +102,24 @@ class HybridRecommender:
         self.movies_df['rating_count'] = self.movies_df['rating_count'].fillna(0)
         self.movies_df['tags_text'] = self.movies_df['tags_text'].fillna('')
 
+         # Create content field
+        self.movies_df['genres_text'] = self.movies_df['genres'].str.replace('|', ' ')
+        self.movies_df['content'] = (
+            self.movies_df['genres_text'] + ' ' + 
+            self.movies_df['tags_text']
+        )
+        
+        # Keep only essential columns
+        self.movies_df = self.movies_df[['movieId', 'title', 'genres', 'content', 
+                                         'avg_rating', 'rating_count']]
+        
+        self.ratings_df = ratings
+        
+        # Free memory
+        del movies, avg_ratings, movie_tags, links
+        gc.collect()
+        
+        return self
+
+
         
