@@ -191,3 +191,24 @@ class HybridRecommender:
         gc.collect()
 
         return self
+
+    def get_content_recommendations(self, movie_id, n=10):
+       try:
+            idx = self.movies_df[self.movies_df['movieId'] == movie_id].index[0]
+
+            # Compute similarity only for this movie (memory efficient)
+            movie_vector = self.tfidf_matrix[idx]
+            sim_scores = cosine_similarity(movie_vector, self.tfidf_matrix).flatten()
+            
+            # Get top N similar movies
+            top_indices = np.argsort(sim_scores)[::-1][1:n+1]  # Exclude the movie itself
+            
+            recommendations = self.movies_df.iloc[top_indices].copy()
+            recommendations['similarity_score'] = sim_scores[top_indices]
+            
+            return recommendations[['movieId', 'title', 'genres', 'avg_rating', 'similarity_score']]
+
+       except IndexError:
+            return pd.DataFrame()
+
+        
