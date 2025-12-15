@@ -138,3 +138,56 @@ class HybridRecommender:
         gc.collect()
         
         return self
+
+    def build_collaborative_filtering(self, min_ratings=50, max_users=20000, max_movies=5000):
+        
+        # Get most popular movies
+        popular_movies = self.movies_df.nlargest(max_movies, 'rating_count')['movieId'].values
+
+        # Filter ratings for popular movies only
+        filtered_ratings = self.ratings_df[
+            self.ratings_df['movieId'].isin(popular_movies)
+        ]
+
+        #Get the most Active users
+        user_counts = filtered_ratings['userId'].value_counts()
+        top_users = user_counts.head(max_users).index
+        
+        filtered_ratings = filtered_ratings[filtered_ratings['userId'].isin(top_users)]
+
+        # Create user-item matrix with sparse format
+        print("Creating sparse user-item matrix...")
+        self.user_item_matrix = filtered_ratings.pivot_table(
+            index='movieId',
+            columns='userId',
+            values='rating',
+            fill_value=0
+        ).astype(np.float32)
+
+        # Create mappings
+        self.movie_id_to_idx = {
+            mid: idx for idx, mid in enumerate(self.user_item_matrix.index)
+        }
+        self.idx_to_movie_id = {
+            idx: mid for mid, idx in self.movie_id_to_idx.items()
+        }
+
+        # Convert to sparse matrix
+        sparse_matrix = csr_matrix(self.user_item_matrix.values)
+        
+        sparsity = 100 * (1 - sparse_matrix.nnz / (sparse_matrix.shape[0] * sparse_matrix.shape[1]))
+
+        # Train KNN model
+        self.knn_model = NearestNeighbors(
+            metric='cosine',
+            algorithm='brute',
+            n_neighbors=min(20, len(self.user_item_matrix) - 1),
+            n_jobs=-1  # Use all CPU cores
+        )
+        self.knn_model.fit(sparse_matrix)
+
+        # Free memory
+        del filtered_ratings, sparse_matrix, user_counts
+        gc.collect()
+
+        return self
