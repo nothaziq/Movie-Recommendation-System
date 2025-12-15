@@ -2,6 +2,13 @@ import streamlit as st
 import pandas as pd
 from MovieRecommendation import HybridRecommender
 
+# Page config
+st.set_page_config(
+    page_title="Movie Recommender",
+    page_icon="🎬",
+    layout="wide"
+)
+
 # Initialize session state for the recommender
 if 'recommender' not in st.session_state:
     st.session_state.recommender = None
