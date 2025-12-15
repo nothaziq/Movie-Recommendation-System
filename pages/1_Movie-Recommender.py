@@ -87,6 +87,24 @@ with st.sidebar:
         f"🎬 Movies: {config['movies']:,}\n\n"
         f"📊 Full Dataset: {'Yes' if config['use_full'] else 'No'}"
     )
+
+# Load the model
+if not st.session_state.loaded:
+    with st.spinner('🎬 Loading recommendation model... This may take a few minutes...'):
+        try:
+            st.session_state.recommender = load_recommender(
+                use_full_dataset=config['use_full'],
+                max_users=config['users'],
+                max_movies=config['movies']
+            )
+            st.session_state.loaded = True
+            st.success("✅ Model loaded successfully!")
+        except Exception as e:
+            st.error(f"❌ Error loading model: {str(e)}")
+            st.stop()
+
+recommender = st.session_state.recommender
+
 st.markdown(
     """
     <style>
