@@ -5,12 +5,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.neighbors import NearestNeighbors
 from scipy.sparse import csr_matrix
-import warnings
 import gc
 import os
-
-# Nobody likes warning messages cluttering up the output
-warnings.filterwarnings('ignore')
 
 class HybridRecommender:
     """
